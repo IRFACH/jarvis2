@@ -3,7 +3,7 @@ from core.config import DEEPSEEK_API_KEY, DEEPSEEK_URL
 
 def query_llm(system_prompt, user_prompt):
     headers = {
-        "Authorization": f"Bearer {DEEPSEEK_API_KEY}",
+        "Authorization": f"Bearer {sk-126c061e519c4545936f79390e8fd38b}",
         "Content-Type": "application/json"
     }
 
@@ -20,3 +20,4 @@ def query_llm(system_prompt, user_prompt):
     response.raise_for_status()
 
     return response.json()["choices"][0]["message"]["content"]
+
