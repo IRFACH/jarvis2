@@ -1,30 +1,43 @@
-import sounddevice as sd
-import queue
-import json
-from vosk import Model, KaldiRecognizer
+import subprocess
+import os
+import time
 
-q = queue.Queue()
-
-def callback(indata, frames, time, status):
-    q.put(bytes(indata))
+AUDIO_FILE = "/data/data/com.termux/files/home/jarvis_input.wav"
+WHISPER_BIN = "./whisper.cpp/main"
+WHISPER_MODEL = "./whisper.cpp/models/ggml-base.en.bin"
 
 class VoiceInput:
-    def __init__(self):
-        self.model = Model("models/vosk-model-small-en-us-0.15")
-        self.recognizer = KaldiRecognizer(self.model, 16000)
+    def init(self, record_seconds=3):
+        self.record_seconds = record_seconds
 
     def listen(self):
-        with sd.RawInputStream(
-            samplerate=16000,
-            blocksize=8000,
-            dtype='int16',
-            channels=1,
-            callback=callback
-        ):
-            while True:
-                data = q.get()
-                if self.recognizer.AcceptWaveform(data):
-                    result = json.loads(self.recognizer.Result())
-                    text = result.get("text", "")
-                    if text:
-                        return text
+        # Remove old audio if exists
+        if os.path.exists(AUDIO_FILE):
+            os.remove(AUDIO_FILE)
+
+        # Record audio
+        subprocess.run([
+            "termux-microphone-record",
+            "-f", AUDIO_FILE,
+            "-l", str(self.record_seconds)
+        ], check=True)
+
+        # Small delay to ensure file is saved
+        time.sleep(0.3)
+
+        # Run whisper.cpp
+        subprocess.run([
+            WHISPER_BIN,
+            "-m", WHISPER_MODEL,
+            "-f", AUDIO_FILE,
+            "-otxt",
+            "-of", "jarvis_transcript"
+        ], check=True)
+
+        # Read output
+        txt_file = "jarvis_transcript.txt"
+        if os.path.exists(txt_file):
+            with open(txt_file, "r", encoding="utf-8") as f:
+                return f.read().strip()
+
+        return ""
